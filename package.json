@@ -21,7 +21,8 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "workspaceContains:**/.git"
+    "workspaceContains:**/.git",
+    "onUri"
   ],
   "main": "./dist/extension.js",
   "contributes": {

@@ -79,8 +79,16 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.window.registerUriHandler({
       handleUri: async (uri: vscode.Uri) => {
+        console.log('[Ketchup] URI handler received:', uri.toString());
+        console.log('[Ketchup] URI path:', uri.path);
+        console.log('[Ketchup] URI query:', uri.query);
+
         if (uri.path === '/auth/callback') {
+          console.log('[Ketchup] Handling auth callback');
           await handleAuthCallback(uri);
+        } else {
+          console.log('[Ketchup] Unknown URI path:', uri.path);
+          vscode.window.showWarningMessage(`Ketchup received unknown URI: ${uri.path}`);
         }
       },
     })
