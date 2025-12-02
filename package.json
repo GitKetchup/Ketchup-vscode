@@ -1,0 +1,176 @@
+{
+  "name": "ketchup-vscode",
+  "displayName": "Ketchup",
+  "description": "Transform your git commits into cinematic story recaps directly from VS Code",
+  "version": "0.1.0",
+  "publisher": "ketchup",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "SCM Providers"
+  ],
+  "keywords": [
+    "git",
+    "changelog",
+    "recap",
+    "story",
+    "documentation"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "workspaceContains:**/.git"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "ketchup.connect",
+        "title": "Ketchup: Connect Workspace",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "ketchup.draftRecap",
+        "title": "Ketchup: Draft Recap",
+        "icon": "$(add)"
+      },
+      {
+        "command": "ketchup.viewRecap",
+        "title": "Ketchup: View Recap",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "ketchup.refreshRecaps",
+        "title": "Ketchup: Refresh Recaps",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "ketchup.openInBrowser",
+        "title": "Ketchup: Open in Browser",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "ketchup.logout",
+        "title": "Ketchup: Logout",
+        "icon": "$(sign-out)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ketchup",
+          "title": "Ketchup",
+          "icon": "media/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "ketchup": [
+        {
+          "id": "ketchup.recaps",
+          "name": "Recaps"
+        },
+        {
+          "id": "ketchup.schedules",
+          "name": "Schedules"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "ketchup.draftRecap",
+          "when": "view == ketchup.recaps",
+          "group": "navigation"
+        },
+        {
+          "command": "ketchup.refreshRecaps",
+          "when": "view == ketchup.recaps",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "ketchup.viewRecap",
+          "when": "view == ketchup.recaps && viewItem == recap",
+          "group": "inline"
+        },
+        {
+          "command": "ketchup.openInBrowser",
+          "when": "view == ketchup.recaps && viewItem == recap"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Ketchup",
+      "properties": {
+        "ketchup.apiUrl": {
+          "type": "string",
+          "default": "https://app.gitketchup.com",
+          "description": "Ketchup API base URL (for self-hosted instances)"
+        },
+        "ketchup.mode": {
+          "type": "string",
+          "enum": [
+            "cloud",
+            "local",
+            "mixed"
+          ],
+          "default": "cloud",
+          "description": "Operation mode: cloud (default), local-only, or mixed"
+        },
+        "ketchup.defaultTimeRange": {
+          "type": "number",
+          "enum": [
+            7,
+            14,
+            30
+          ],
+          "default": 7,
+          "description": "Default time range for drafting recaps (in days)"
+        },
+        "ketchup.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh recaps when workspace opens"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "deploy": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vscode/test-electron": "^2.3.8",
+    "eslint": "^8.56.0",
+    "glob": "^10.3.10",
+    "typescript": "^5.3.3",
+    "@vscode/vsce": "^2.22.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.5",
+    "simple-git": "^3.22.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ketchup-vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/ketchup-vscode/issues"
+  },
+  "homepage": "https://gitketchup.com"
+}
