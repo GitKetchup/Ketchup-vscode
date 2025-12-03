@@ -153,7 +153,7 @@ async function handleConnect(context: vscode.ExtensionContext) {
     );
 
     if (selection === 'Connect in Browser') {
-      const url = apiClient.getWebUrl(`/repos/add?url=${encodeURIComponent(remoteUrl)}`);
+      const url = apiClient.getWebUrl(`/repositories?url=${encodeURIComponent(remoteUrl)}`);
       vscode.env.openExternal(vscode.Uri.parse(url));
     }
 
@@ -168,22 +168,54 @@ async function handleConnect(context: vscode.ExtensionContext) {
  * Start OAuth authentication flow
  */
 async function startOAuthFlow() {
-  const authUrl = apiClient.getWebUrl('/vscode/auth');
+  const scheme = vscode.env.uriScheme;
   const callbackUri = await vscode.env.asExternalUri(
-    vscode.Uri.parse('vscode://ketchup.ketchup-vscode/auth/callback')
+    vscode.Uri.parse(`${scheme}://ketchup.ketchup-vscode/auth/callback`)
   );
 
+  const authUrl = apiClient.getWebUrl('/vscode/auth');
   const fullAuthUrl = `${authUrl}?redirect_uri=${encodeURIComponent(callbackUri.toString())}`;
 
-  vscode.window.showInformationMessage('Opening browser for authentication...');
-  vscode.env.openExternal(vscode.Uri.parse(fullAuthUrl));
+  const selection = await vscode.window.showInformationMessage(
+    'Opening browser for authentication...',
+    'Open Browser',
+    'Enter Code Manually'
+  );
+
+  if (selection === 'Enter Code Manually') {
+    const code = await vscode.window.showInputBox({
+      prompt: 'Paste the authorization code from the browser',
+      placeHolder: 'Paste code here...'
+    });
+    
+    if (code) {
+      await handleAuthCode(code);
+    }
+  } else if (selection === 'Open Browser') {
+    vscode.env.openExternal(vscode.Uri.parse(fullAuthUrl));
+  } else {
+    // Default action if they just closed the notification but didn't click a button
+    // We can still open the browser or just do nothing. 
+    // Let's open it to be helpful, or wait. 
+    // Actually, let's just open it if they didn't explicitly cancel.
+    vscode.env.openExternal(vscode.Uri.parse(fullAuthUrl));
+  }
 }
 
 /**
  * Handle OAuth callback
  */
+/**
+ * Handle OAuth callback
+ */
 async function handleAuthCallback(uri: vscode.Uri) {
-  const query = new URLSearchParams(uri.query);
+  // Handle malformed query strings with double ? (e.g. ?windowId=12?code=...)
+  // This can happen if the auth server appends ?code= without checking for existing params
+  const sanitizedQuery = uri.query.replace(/\?/g, '&');
+  const query = new URLSearchParams(sanitizedQuery);
+  
+  const accessToken = query.get('access_token');
+  const refreshToken = query.get('refresh_token');
   const code = query.get('code');
   const error = query.get('error');
 
@@ -192,11 +224,38 @@ async function handleAuthCallback(uri: vscode.Uri) {
     return;
   }
 
-  if (!code) {
-    vscode.window.showErrorMessage('No authorization code received');
+  if (accessToken && refreshToken) {
+    await handleAuthTokens(accessToken, refreshToken);
     return;
   }
 
+  if (code) {
+    // Fallback for legacy flow or manual entry
+    await handleAuthCode(code);
+    return;
+  }
+
+  vscode.window.showErrorMessage('No authentication tokens received');
+}
+
+/**
+ * Handle tokens directly
+ */
+async function handleAuthTokens(accessToken: string, refreshToken: string) {
+  try {
+    await apiClient.setSession(accessToken, refreshToken);
+    vscode.window.showInformationMessage('Successfully connected to Ketchup!');
+    vscode.commands.executeCommand('ketchup.refreshRecaps');
+  } catch (error: any) {
+    const message = error.message || 'Unknown error';
+    vscode.window.showErrorMessage(`Authentication failed: ${message}`);
+  }
+}
+
+/**
+ * Exchange code for token
+ */
+async function handleAuthCode(code: string) {
   try {
     await vscode.window.withProgress(
       {
@@ -211,8 +270,9 @@ async function handleAuthCallback(uri: vscode.Uri) {
 
     vscode.window.showInformationMessage('Successfully connected to Ketchup!');
     vscode.commands.executeCommand('ketchup.refreshRecaps');
-  } catch (error) {
-    vscode.window.showErrorMessage(`Authentication failed: ${error}`);
+  } catch (error: any) {
+    const message = error.message || JSON.stringify(error);
+    vscode.window.showErrorMessage(`Authentication failed: ${message}`);
   }
 }
 
@@ -253,7 +313,7 @@ async function handleDraftRecap(context: vscode.ExtensionContext) {
       'Connect in Browser'
     ).then(selection => {
       if (selection === 'Connect in Browser') {
-        const url = apiClient.getWebUrl(`/repos/add?url=${encodeURIComponent(remoteUrl)}`);
+        const url = apiClient.getWebUrl(`/repositories?url=${encodeURIComponent(remoteUrl)}`);
         vscode.env.openExternal(vscode.Uri.parse(url));
       }
     });

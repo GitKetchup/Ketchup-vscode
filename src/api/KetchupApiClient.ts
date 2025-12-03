@@ -135,6 +135,11 @@ export class KetchupApiClient {
     return response.data;
   }
 
+  async setSession(accessToken: string, refreshToken: string): Promise<void> {
+    await this.setAccessToken(accessToken);
+    await this.setRefreshToken(refreshToken);
+  }
+
   async isAuthenticated(): Promise<boolean> {
     const token = await this.getAccessToken();
     return !!token;
