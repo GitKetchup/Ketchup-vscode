@@ -79,16 +79,6 @@ export class KetchupApiClient {
       url = `${url}/api`;
     }
     
-    // Remove trailing slash
-    if (url.endsWith('/')) {
-      url = url.slice(0, -1);
-    }
-    
-    // Ensure URL ends with /api
-    if (!url.endsWith('/api')) {
-      url = `${url}/api`;
-    }
-    
     console.log('[API] Using base URL:', url);
     return url;
   }
@@ -263,7 +253,7 @@ export class KetchupApiClient {
     to: string,
     branch?: string
   ): Promise<Commit[]> {
-    const response = await this.axios.post<{ commits: Commit[] }>('/api/github/commits', {
+    const response = await this.axios.post<{ commits: Commit[] }>('/github/commits', {
       projectId: repositoryId,
       from,
       to,
@@ -322,10 +312,74 @@ export class KetchupApiClient {
   // ===== Schedules =====
 
   async getSchedules(repositoryId: string): Promise<Schedule[]> {
-    const response = await this.axios.get<Schedule[]>('/v1/schedules', {
+    const response = await this.axios.get<{ schedules: any[] }>('/schedules', {
       params: { repositoryId },
     });
+    
+    // Map backend response to Schedule interface
+    return response.data.schedules.map(s => ({
+      id: s.id,
+      repositoryId: repositoryId, // Backend doesn't return this in the list view sometimes
+      name: s.repo_full_name + ' - ' + s.cadence, // Fallback name
+      cron: s.time_of_day + ' ' + s.day_of_week, // Fallback cron display
+      enabled: s.status === 'active',
+      lastRun: s.last_run_at,
+      nextRun: s.next_run_at,
+      config: {
+        branch: 'main', // Default
+      }
+    }));
+  }
+
+  async createSchedule(repositoryId: string, schedule: Partial<Schedule>): Promise<Schedule> {
+    // Parse cron to extract day and time (simplified)
+    // Expected format: "0 9 * * 1" (Weekly Mon 9am)
+    const parts = (schedule.cron || '').split(' ');
+    const dayMap = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const day = parts[4] ? dayMap[parseInt(parts[4])] : 'Monday';
+    const time = `${parts[1] || '09'}:${parts[0] || '00'}`;
+
+    const payload = {
+      repo_id: repositoryId,
+      frequency: 'weekly', // Default to weekly for now
+      config: {
+        day,
+        time,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        startDate: new Date().toISOString().split('T')[0],
+      },
+      destinations: [] // Default empty
+    };
+
+    const response = await this.axios.post('/schedules', payload);
     return response.data;
+  }
+
+  async updateSchedule(id: string, schedule: Partial<Schedule>): Promise<Schedule> {
+    const updates: any = {};
+
+    if (schedule.enabled !== undefined) {
+      updates.status = schedule.enabled ? 'active' : 'paused';
+    }
+
+    if (schedule.cron) {
+      const parts = schedule.cron.split(' ');
+      const dayMap = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const day = parts[4] ? dayMap[parseInt(parts[4])] : 'Monday';
+      const time = `${parts[1] || '09'}:${parts[0] || '00'}`;
+      
+      updates.config = {
+        day,
+        time
+      };
+    }
+
+    const response = await this.axios.patch(`/schedules/${id}`, updates);
+    return response.data;
+  }
+
+  async deleteSchedule(id: string): Promise<void> {
+    await this.axios.delete(`/schedules/${id}`);
   }
 
   async triggerSchedule(scheduleId: string): Promise<void> {

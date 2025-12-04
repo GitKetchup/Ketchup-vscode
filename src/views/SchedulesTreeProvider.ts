@@ -80,7 +80,11 @@ export class SchedulesTreeProvider implements vscode.TreeDataProvider<ScheduleTr
               schedule.enabled ? 'Enabled' : 'Disabled',
               vscode.TreeItemCollapsibleState.None,
               'schedule',
-              undefined,
+              {
+                command: 'ketchup.editSchedule',
+                title: 'Edit Schedule',
+                arguments: [schedule],
+              },
               schedule
             )
         );

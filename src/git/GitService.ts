@@ -73,6 +73,19 @@ export class GitService {
   }
 
   /**
+   * Get all local branches
+   */
+  async getBranches(): Promise<string[]> {
+    try {
+      const branchSummary = await this.git.branchLocal();
+      return branchSummary.all;
+    } catch (error) {
+      console.error('Failed to get branches:', error);
+      return ['main'];
+    }
+  }
+
+  /**
    * Get repository name from remote URL or directory
    */
   async getRepositoryName(): Promise<string> {

@@ -56,6 +56,31 @@
         "command": "ketchup.logout",
         "title": "Ketchup: Logout",
         "icon": "$(sign-out)"
+      },
+      {
+        "command": "ketchup.createSchedule",
+        "title": "Create Schedule",
+        "icon": "$(add)"
+      },
+      {
+        "command": "ketchup.editSchedule",
+        "title": "Edit Schedule",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "ketchup.deleteSchedule",
+        "title": "Delete Schedule",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "ketchup.toggleSchedule",
+        "title": "Toggle Schedule",
+        "icon": "$(watch)"
+      },
+      {
+        "command": "ketchup.refreshSchedules",
+        "title": "Refresh Schedules",
+        "icon": "$(refresh)"
       }
     ],
     "viewsContainers": {
@@ -95,6 +120,16 @@
           "command": "ketchup.logout",
           "when": "view == ketchup.recaps",
           "group": "navigation"
+        },
+        {
+          "command": "ketchup.createSchedule",
+          "when": "view == ketchup.schedules",
+          "group": "navigation"
+        },
+        {
+          "command": "ketchup.refreshSchedules",
+          "when": "view == ketchup.schedules",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -106,6 +141,20 @@
         {
           "command": "ketchup.openInBrowser",
           "when": "view == ketchup.recaps && viewItem == recap"
+        },
+        {
+          "command": "ketchup.editSchedule",
+          "when": "view == ketchup.schedules && viewItem == schedule",
+          "group": "inline"
+        },
+        {
+          "command": "ketchup.toggleSchedule",
+          "when": "view == ketchup.schedules && viewItem == schedule",
+          "group": "inline"
+        },
+        {
+          "command": "ketchup.deleteSchedule",
+          "when": "view == ketchup.schedules && viewItem == schedule"
         }
       ]
     },

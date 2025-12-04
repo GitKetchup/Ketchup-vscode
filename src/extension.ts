@@ -5,6 +5,7 @@ import { RecapsTreeProvider } from './views/RecapsTreeProvider';
 import { SchedulesTreeProvider } from './views/SchedulesTreeProvider';
 import { DraftRecapPanel } from './webviews/DraftRecapPanel';
 import { RecapDetailPanel } from './webviews/RecapDetailPanel';
+import { SchedulePanel } from './webviews/SchedulePanel';
 import { extensionContext } from './context/ExtensionContext';
 import { KetchupStatusBar } from './ui/KetchupStatusBar';
 
@@ -59,6 +60,32 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('ketchup.refreshSchedules', async () => {
+      schedulesTreeProvider.refresh();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.createSchedule', async () => {
+      await handleCreateSchedule(context);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.editSchedule', async (item) => {
+      await handleEditSchedule(context, item);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.deleteSchedule', async (item) => {
+      await handleDeleteSchedule(item);
+      schedulesTreeProvider.refresh();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.toggleSchedule', async (item) => {
+      await handleToggleSchedule(item);
       schedulesTreeProvider.refresh();
     })
   );
@@ -494,6 +521,92 @@ async function showStatusPanel(context: vscode.ExtensionContext) {
     language: 'markdown'
   });
   await vscode.window.showTextDocument(doc, { preview: true });
+}
+
+/**
+ * Handle create schedule
+ */
+async function handleCreateSchedule(context: vscode.ExtensionContext) {
+  const gitService = createGitService();
+  if (!gitService) {
+    vscode.window.showErrorMessage('Please open a workspace to create a schedule');
+    return;
+  }
+
+  const remoteUrl = await gitService.getRemoteUrl();
+  if (!remoteUrl) {
+    vscode.window.showErrorMessage('Could not detect remote URL');
+    return;
+  }
+
+  const repo = await apiClient.lookupRepository(remoteUrl);
+  if (!repo) {
+    vscode.window.showErrorMessage('Repository not connected to Ketchup');
+    return;
+  }
+
+  await SchedulePanel.render(context, repo);
+}
+
+/**
+ * Handle edit schedule
+ */
+async function handleEditSchedule(context: vscode.ExtensionContext, item: any) {
+  const schedule = item.schedule || item; // Handle tree item or direct object
+  if (!schedule || !schedule.id) {
+    return;
+  }
+
+  const gitService = createGitService();
+  if (!gitService) { return; }
+  const remoteUrl = await gitService.getRemoteUrl();
+  if (!remoteUrl) { return; }
+  const repo = await apiClient.lookupRepository(remoteUrl);
+  if (!repo) { return; }
+
+  await SchedulePanel.render(context, repo, schedule);
+}
+
+/**
+ * Handle delete schedule
+ */
+async function handleDeleteSchedule(item: any) {
+  const schedule = item.schedule || item;
+  if (!schedule || !schedule.id) {
+    return;
+  }
+
+  const confirm = await vscode.window.showWarningMessage(
+    `Are you sure you want to delete schedule "${schedule.name}"?`,
+    'Delete',
+    'Cancel'
+  );
+
+  if (confirm === 'Delete') {
+    try {
+      await apiClient.deleteSchedule(schedule.id);
+      vscode.window.showInformationMessage('Schedule deleted');
+    } catch (error: any) {
+      vscode.window.showErrorMessage(`Failed to delete schedule: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Handle toggle schedule
+ */
+async function handleToggleSchedule(item: any) {
+  const schedule = item.schedule || item;
+  if (!schedule || !schedule.id) {
+    return;
+  }
+
+  try {
+    await apiClient.updateSchedule(schedule.id, { enabled: !schedule.enabled });
+    vscode.window.showInformationMessage(`Schedule ${!schedule.enabled ? 'enabled' : 'disabled'}`);
+  } catch (error: any) {
+    vscode.window.showErrorMessage(`Failed to toggle schedule: ${error.message}`);
+  }
 }
 
 /**

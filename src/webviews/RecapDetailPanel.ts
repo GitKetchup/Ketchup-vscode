@@ -74,6 +74,22 @@ export class RecapDetailPanel {
       ]);
 
       this.panel.title = recap.title;
+
+      // If commits are missing from the recap object (e.g. not stored in metadata), fetch them
+      if (!recap.commits || recap.commits.length === 0) {
+        try {
+          // Use a default lookback if timeRange is missing (though it should be there)
+          const to = recap.timeRange?.to || new Date().toISOString();
+          const from = recap.timeRange?.from || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+          
+          const commits = await apiClient.getCommits(recap.repositoryId, from, to);
+          recap.commits = commits;
+        } catch (err) {
+          console.error('Failed to fetch commits for recap:', err);
+          // Continue rendering without commits if fetch fails
+        }
+      }
+
       this.panel.webview.html = this.getHtmlContent(recap, assets, repo);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
@@ -221,6 +237,16 @@ export class RecapDetailPanel {
               <!-- <p class="story-description">${this.escapeHtml(point.description || '')}</p> -->
               <div class="story-commits">
                 <span class="story-commits-label">${point.linked_commit_ids?.length || 0} commit${(point.linked_commit_ids?.length || 0) !== 1 ? 's' : ''}</span>
+                ${point.linked_commit_ids && point.linked_commit_ids.length > 0 ? `
+                  <div class="linked-commits-list">
+                    ${point.linked_commit_ids.map((sha: string) => `
+                      <span class="commit-tag" title="${sha}">
+                        <span class="icon-small">GitCommit</span>
+                        ${sha.substring(0, 7)}
+                      </span>
+                    `).join('')}
+                  </div>
+                ` : ''}
               </div>
             </div>
           `).join('')}
@@ -530,6 +556,39 @@ export class RecapDetailPanel {
       .story-commits-label {
         font-size: 12px;
         color: #5C5C66;
+        margin-bottom: 8px;
+        display: block;
+      }
+
+      .linked-commits-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .commit-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 6px;
+        background: #0F0F12;
+        border: 1px solid #5C5C66;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: 11px;
+        color: #A0A0A8;
+        cursor: default;
+      }
+
+      .commit-tag:hover {
+        border-color: #8B4049;
+        color: #FAFAFA;
+      }
+
+      .icon-small {
+        font-size: 10px;
+        font-family: sans-serif; /* Reset font for icon if needed, or use SVG */
+        display: none; /* Hide text icon for now, just use SHA */
       }
 
       /* Assets Panel */
