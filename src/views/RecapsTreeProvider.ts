@@ -210,10 +210,14 @@ class RecapTreeItem extends vscode.TreeItem {
     if (this.recap) {
       const tooltip = new vscode.MarkdownString();
       tooltip.appendMarkdown(`**${this.recap.title}**\n\n`);
-      tooltip.appendMarkdown(`${this.recap.summary}\n\n`);
+      const summaryText = (typeof this.recap.summary === 'string' ? this.recap.summary : this.recap.summary?.summary) || '';
+      tooltip.appendMarkdown(`${summaryText}\n\n`);
       tooltip.appendMarkdown(`---\n\n`);
       tooltip.appendMarkdown(`- **Commits:** ${this.recap.commits.length}\n`);
-      tooltip.appendMarkdown(`- **Story Points:** ${this.recap.storyPoints.length}\n`);
+      
+      const bulletins = typeof this.recap.summary === 'object' && this.recap.summary?.bulletins ? this.recap.summary.bulletins : [];
+      tooltip.appendMarkdown(`- **Story Points:** ${bulletins.length}\n`);
+      
       tooltip.appendMarkdown(`- **Status:** ${this.recap.status}\n`);
       return tooltip;
     }

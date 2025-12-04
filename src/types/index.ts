@@ -43,8 +43,12 @@ export interface Recap {
   id: string;
   repositoryId: string;
   title: string;
-  summary: string;
-  storyPoints: StoryPoint[];
+  summary: {
+    summary: string;
+    bulletins: any[];
+    channels?: any;
+  };
+  // storyPoints: StoryPoint[]; // Deprecated/Removed in favor of summary.bulletins
   commits: Commit[];
   timeRange: {
     from: string;

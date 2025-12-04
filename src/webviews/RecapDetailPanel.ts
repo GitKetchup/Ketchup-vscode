@@ -67,21 +67,22 @@ export class RecapDetailPanel {
 
   private async loadRecapData(): Promise<void> {
     try {
-      const [recap, assets] = await Promise.all([
-        apiClient.getRecap(this.recapId),
+      const recap = await apiClient.getRecap(this.recapId);
+      const [assets, repo] = await Promise.all([
         apiClient.getAssets(this.recapId),
+        apiClient.getRepository(recap.repositoryId),
       ]);
 
       this.panel.title = recap.title;
-      this.panel.webview.html = this.getHtmlContent(recap, assets);
+      this.panel.webview.html = this.getHtmlContent(recap, assets, repo);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
       vscode.window.showErrorMessage(`Failed to load recap: ${errorMessage}`);
-      this.panel.dispose();
+      // this.panel.dispose(); // Don't dispose, let user retry or see error
     }
   }
 
-  private async handleGenerateAsset(payload: { type: Asset['type'] }): Promise<void> {
+  private async handleGenerateAsset(payload: { type: Asset['type']; options?: any }): Promise<void> {
     try {
       const asset = await vscode.window.withProgress(
         {
@@ -90,7 +91,7 @@ export class RecapDetailPanel {
           cancellable: false,
         },
         async () => {
-          const newAsset = await apiClient.generateAsset(this.recapId, payload.type);
+          const newAsset = await apiClient.generateAsset(this.recapId, payload.type, payload.options);
           return await apiClient.pollAssetStatus(newAsset.id);
         }
       );
@@ -106,13 +107,23 @@ export class RecapDetailPanel {
   }
 
   private async handleOpenInBrowser(): Promise<void> {
-    const recap = await apiClient.getRecap(this.recapId);
-    const url = apiClient.getWebUrl(`/repositories/${recap.repositoryId}/recaps/${recap.id}`);
-    vscode.env.openExternal(vscode.Uri.parse(url));
+    try {
+      const recap = await apiClient.getRecap(this.recapId);
+      const repo = await apiClient.getRepository(recap.repositoryId);
+      // Construct URL: /repositories/:owner/:repo?recapId=:recapId
+      // repo.fullName is usually "owner/repo"
+      const url = apiClient.getWebUrl(`/repositories/${repo.fullName}?recapId=${recap.id}`);
+      vscode.env.openExternal(vscode.Uri.parse(url));
+    } catch (error) {
+      vscode.window.showErrorMessage('Failed to open in browser');
+    }
   }
 
-  private getHtmlContent(recap: Recap, assets: Asset[]): string {
+  private getHtmlContent(recap: Recap, assets: Asset[], repo: any): string {
     const riskColors = {
+      Low: '#10B981',
+      Medium: '#F59E0B',
+      High: '#EF4444',
       LOW: '#10B981',
       MEDIUM: '#F59E0B',
       HIGH: '#EF4444',
@@ -126,7 +137,15 @@ export class RecapDetailPanel {
       STYLE: '💄',
       TEST: '🧪',
       CHORE: '🔧',
+      INFRA: '🏗️',
     };
+    
+    // Handle new summary structure
+    const summaryText = (typeof recap.summary === 'string' ? recap.summary : recap.summary?.summary) || '';
+    const bulletins = typeof recap.summary === 'object' && recap.summary?.bulletins ? recap.summary.bulletins : [];
+    // Fallback to old storyPoints if bulletins is empty (for backward compatibility if needed)
+    // const displayPoints = bulletins.length > 0 ? bulletins : (recap as any).storyPoints || [];
+    const displayPoints = bulletins;
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -148,7 +167,7 @@ export class RecapDetailPanel {
           <span>↗</span>
         </button>
       </div>
-      <p class="summary">${recap.summary}</p>
+      <p class="summary">${this.escapeHtml(summaryText)}</p>
       <div class="meta">
         <span class="meta-item">
           <span class="icon">📅</span>
@@ -160,7 +179,7 @@ export class RecapDetailPanel {
         </span>
         <span class="meta-item">
           <span class="icon">✨</span>
-          ${recap.storyPoints.length} story points
+          ${displayPoints.length} story points
         </span>
       </div>
     </header>
@@ -189,19 +208,19 @@ export class RecapDetailPanel {
       <main class="main-content">
         <h2 class="section-title">Story Points</h2>
         <div class="story-points">
-          ${recap.storyPoints.map((point, index) => `
+          ${displayPoints.map((point: any, index: number) => `
             <div class="story-card">
               <div class="story-header">
                 <span class="story-number">${index + 1}</span>
                 <div class="story-badges">
-                  <span class="badge badge-type">${typeIcons[point.type] || ''} ${point.type}</span>
-                  <span class="badge badge-risk" style="--risk-color: ${riskColors[point.risk]}">${point.risk} Risk</span>
+                  <span class="badge badge-type">${typeIcons[point.type as keyof typeof typeIcons] || ''} ${point.type}</span>
+                  <span class="badge badge-risk" style="--risk-color: ${riskColors[point.risk_level as keyof typeof riskColors] || riskColors.LOW}">${point.risk_level} Risk</span>
                 </div>
               </div>
-              <h3 class="story-title">${this.escapeHtml(point.title)}</h3>
-              <p class="story-description">${this.escapeHtml(point.description)}</p>
+              <h3 class="story-title">${this.escapeHtml(point.content)}</h3>
+              <!-- <p class="story-description">${this.escapeHtml(point.description || '')}</p> -->
               <div class="story-commits">
-                <span class="story-commits-label">${point.commitShas.length} commit${point.commitShas.length > 1 ? 's' : ''}</span>
+                <span class="story-commits-label">${point.linked_commit_ids?.length || 0} commit${(point.linked_commit_ids?.length || 0) !== 1 ? 's' : ''}</span>
               </div>
             </div>
           `).join('')}
@@ -212,28 +231,41 @@ export class RecapDetailPanel {
       <aside class="assets-panel">
         <div class="assets-section">
           <h3 class="sidebar-title">Create New</h3>
-          <div class="asset-buttons">
-            <button class="asset-btn" onclick="generateAsset('AUDIO')">
-              <span class="icon">🎵</span>
-              <span>Audio Recap</span>
+          <div class="asset-grid">
+            <button class="create-card" onclick="generateAsset('AUDIO')">
+              <div class="create-icon audio">🎵</div>
+              <span class="create-label">Audio Recaps</span>
             </button>
-            <button class="asset-btn" onclick="generateAsset('VIDEO')">
-              <span class="icon">🎬</span>
-              <span>Video Recap</span>
+            <button class="create-card" onclick="generateAsset('VIDEO')">
+              <div class="create-icon video">🎬</div>
+              <span class="create-label">Video Recaps</span>
             </button>
-            <button class="asset-btn" onclick="generateAsset('CHANGELOG')">
-              <span class="icon">📋</span>
-              <span>Changelog</span>
+            <button class="create-card" onclick="generateAsset('CHANGELOG')">
+              <div class="create-icon changelog">📋</div>
+              <span class="create-label">Changelog</span>
             </button>
-            <button class="asset-btn" onclick="generateAsset('X_POST')">
-              <span class="icon">🐦</span>
-              <span>X Post</span>
+            <button class="create-card" onclick="generateAsset('X_POST')">
+              <div class="create-icon social">🐦</div>
+              <span class="create-label">X Post</span>
             </button>
-            <button class="asset-btn" onclick="generateAsset('LINKEDIN_POST')">
-              <span class="icon">💼</span>
-              <span>LinkedIn Post</span>
+            <button class="create-card" onclick="generateAsset('LINKEDIN_POST')">
+              <div class="create-icon social">💼</div>
+              <span class="create-label">LinkedIn Post</span>
             </button>
           </div>
+          
+          <!-- Cinematic Card -->
+          <button class="cinematic-card" onclick="generateAsset('VIDEO', { visualStyle: 'Cinematic', isCinematicFlow: true })">
+            <div class="cinematic-content">
+              <div class="cinematic-badge">
+                <span class="icon">🎬</span>
+                <span>Featured</span>
+              </div>
+              <h3 class="cinematic-title">Cinematic Recap</h3>
+              <p class="cinematic-desc">Create a high-production video recap with dynamic visuals and music.</p>
+            </div>
+            <div class="cinematic-arrow">→</div>
+          </button>
         </div>
 
         ${assets.length > 0 ? `
@@ -264,8 +296,8 @@ export class RecapDetailPanel {
   <script>
     const vscode = acquireVsCodeApi();
 
-    function generateAsset(type) {
-      vscode.postMessage({ type: 'generateAsset', payload: { type } });
+    function generateAsset(type, options) {
+      vscode.postMessage({ type: 'generateAsset', payload: { type, options } });
     }
 
     function openInBrowser() {
@@ -514,30 +546,113 @@ export class RecapDetailPanel {
         padding: 20px;
       }
 
-      .asset-buttons {
+      .asset-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .create-card {
         display: flex;
         flex-direction: column;
-        gap: 8px;
-      }
-
-      .asset-btn {
-        display: flex;
         align-items: center;
-        gap: 12px;
+        justify-content: center;
         padding: 12px;
-        background: rgba(139, 64, 73, 0.1);
-        border: 1px solid rgba(139, 64, 73, 0.3);
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(92, 92, 102, 0.3);
         border-radius: 8px;
-        color: #FAFAFA;
-        font-size: 14px;
-        font-weight: 500;
         cursor: pointer;
         transition: all 0.2s;
+        min-height: 80px;
+        text-align: center;
       }
 
-      .asset-btn:hover {
-        background: rgba(139, 64, 73, 0.2);
+      .create-card:hover {
+        background: rgba(255, 255, 255, 0.08);
         border-color: #8B4049;
+        transform: translateY(-1px);
+      }
+
+      .create-icon {
+        font-size: 20px;
+        margin-bottom: 8px;
+        padding: 6px;
+        border-radius: 6px;
+      }
+
+      .create-icon.audio { background: rgba(244, 114, 182, 0.1); color: #F472B6; }
+      .create-icon.video { background: rgba(251, 146, 60, 0.1); color: #FB923C; }
+      .create-icon.changelog { background: rgba(96, 165, 250, 0.1); color: #60A5FA; }
+      .create-icon.social { background: rgba(255, 255, 255, 0.1); color: #FFFFFF; }
+
+      .create-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: #FAFAFA;
+      }
+
+      .cinematic-card {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        background: linear-gradient(135deg, rgba(255, 183, 0, 0.1), rgba(249, 115, 22, 0.05));
+        border: 1px solid rgba(255, 183, 0, 0.3);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: left;
+        margin-top: 8px;
+      }
+
+      .cinematic-card:hover {
+        border-color: rgba(255, 183, 0, 0.6);
+        box-shadow: 0 4px 12px rgba(255, 183, 0, 0.1);
+      }
+
+      .cinematic-content {
+        flex: 1;
+      }
+
+      .cinematic-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        background: rgba(255, 183, 0, 0.2);
+        border-radius: 4px;
+        color: #FFB700;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+
+      .cinematic-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #FAFAFA;
+        margin-bottom: 4px;
+      }
+
+      .cinematic-desc {
+        font-size: 11px;
+        color: #A0A0A8;
+        line-height: 1.4;
+      }
+
+      .cinematic-arrow {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-center;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        color: #FAFAFA;
+        margin-left: 12px;
       }
 
       .assets-list {
