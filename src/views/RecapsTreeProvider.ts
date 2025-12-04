@@ -25,83 +25,86 @@ export class RecapsTreeProvider implements vscode.TreeDataProvider<RecapTreeItem
   async getChildren(element?: RecapTreeItem): Promise<RecapTreeItem[]> {
     if (!element) {
       // Root level - check authentication and repo connection
-      const isAuth = await apiClient.isAuthenticated();
-
-      if (!isAuth) {
-        return [
-          new RecapTreeItem(
-            'Not connected',
-            '',
-            vscode.TreeItemCollapsibleState.None,
-            'info',
-            {
-              command: 'ketchup.connect',
-              title: 'Connect to Ketchup',
-            }
-          ),
-        ];
-      }
-
-      const gitService = createGitService();
-      if (!gitService) {
-        return [
-          new RecapTreeItem(
-            'No workspace open',
-            '',
-            vscode.TreeItemCollapsibleState.None,
-            'info'
-          ),
-        ];
-      }
-
-      const isGitRepo = await gitService.isGitRepository();
-      if (!isGitRepo) {
-        return [
-          new RecapTreeItem(
-            'Not a Git repository',
-            '',
-            vscode.TreeItemCollapsibleState.None,
-            'info'
-          ),
-        ];
-      }
-
-      const remoteUrl = await gitService.getRemoteUrl();
-      if (!remoteUrl) {
-        return [
-          new RecapTreeItem(
-            'No remote configured',
-            '',
-            vscode.TreeItemCollapsibleState.None,
-            'info'
-          ),
-        ];
-      }
-
-      const repo = await apiClient.lookupRepository(remoteUrl);
-      if (!repo) {
-        return [
-          new RecapTreeItem(
-            'Repository not connected',
-            'Connect this repo in Ketchup',
-            vscode.TreeItemCollapsibleState.None,
-            'warning',
-            {
-              command: 'ketchup.connect',
-              title: 'Connect Repository',
-            }
-          ),
-        ];
-      }
-
-      // Fetch recaps
       try {
+        const isAuth = await apiClient.isAuthenticated();
+
+        if (!isAuth) {
+          return [
+            new RecapTreeItem(
+              '🔌 Connect to Ketchup',
+              'Click to authenticate',
+              vscode.TreeItemCollapsibleState.None,
+              'info',
+              {
+                command: 'ketchup.connect',
+                title: 'Connect to Ketchup',
+              }
+            ),
+          ];
+        }
+
+        const gitService = createGitService();
+        if (!gitService) {
+          return [
+            new RecapTreeItem(
+              'No workspace open',
+              'Open a Git repository to get started',
+              vscode.TreeItemCollapsibleState.None,
+              'info'
+            ),
+          ];
+        }
+
+        const isGitRepo = await gitService.isGitRepository();
+        if (!isGitRepo) {
+          return [
+            new RecapTreeItem(
+              'Not a Git repository',
+              'This workspace is not a Git repository',
+              vscode.TreeItemCollapsibleState.None,
+              'info'
+            ),
+          ];
+        }
+
+        const remoteUrl = await gitService.getRemoteUrl();
+        if (!remoteUrl) {
+          return [
+            new RecapTreeItem(
+              'No remote configured',
+              'Add a GitHub remote to continue',
+              vscode.TreeItemCollapsibleState.None,
+              'info'
+            ),
+          ];
+        }
+
+        const repo = await apiClient.lookupRepository(remoteUrl);
+        if (!repo) {
+          const repoInfo = await gitService.getGitHubRepoInfo();
+          const repoName = repoInfo ? `${repoInfo.owner}/${repoInfo.repo}` : 'this repository';
+          
+          return [
+            new RecapTreeItem(
+              `⚠️ ${repoName} not connected`,
+              'Click to connect to Ketchup',
+              vscode.TreeItemCollapsibleState.None,
+              'warning',
+              {
+                command: 'ketchup.connect',
+                title: 'Connect Repository',
+              }
+            ),
+          ];
+        }
+
+        // Fetch recaps
         const recaps = await apiClient.getRecaps(repo.id);
 
         if (recaps.length === 0) {
           return [
             new RecapTreeItem(
-              'No recaps yet',
+              '📝 No recaps yet',
               'Create your first recap',
               vscode.TreeItemCollapsibleState.None,
               'info',
@@ -126,12 +129,17 @@ export class RecapsTreeProvider implements vscode.TreeDataProvider<RecapTreeItem
           recap
         ));
       } catch (error) {
+        console.error('[Recaps Tree] Error:', error);
         return [
           new RecapTreeItem(
-            'Error loading recaps',
-            String(error),
+            '❌ Error loading recaps',
+            error instanceof Error ? error.message : JSON.stringify(error),
             vscode.TreeItemCollapsibleState.None,
-            'error'
+            'error',
+            {
+              command: 'ketchup.refreshRecaps',
+              title: 'Retry',
+            }
           ),
         ];
       }

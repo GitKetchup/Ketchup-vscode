@@ -62,7 +62,35 @@ export class KetchupApiClient {
 
   private getApiUrl(): string {
     const config = vscode.workspace.getConfiguration('ketchup');
-    return config.get<string>('apiUrl') || 'https://app.gitketchup.com';
+    const configuredUrl = config.get<string>('apiUrl');
+    
+    // Default to localhost for development
+    const defaultUrl = 'http://localhost:3003';
+    
+    let url = configuredUrl || defaultUrl;
+
+    // Remove trailing slash
+    if (url.endsWith('/')) {
+      url = url.slice(0, -1);
+    }
+    
+    // Ensure URL ends with /api
+    if (!url.endsWith('/api')) {
+      url = `${url}/api`;
+    }
+    
+    // Remove trailing slash
+    if (url.endsWith('/')) {
+      url = url.slice(0, -1);
+    }
+    
+    // Ensure URL ends with /api
+    if (!url.endsWith('/api')) {
+      url = `${url}/api`;
+    }
+    
+    console.log('[API] Using base URL:', url);
+    return url;
   }
 
   private async getAccessToken(): Promise<string | undefined> {
@@ -118,10 +146,12 @@ export class KetchupApiClient {
   }
 
   private async handleLogout(): Promise<void> {
+    console.log('[API] Logging out due to session expiry or error');
     await extensionContext.getSecrets().delete('ketchup.accessToken');
     await extensionContext.getSecrets().delete('ketchup.refreshToken');
     vscode.window.showWarningMessage('Session expired. Please log in again.');
-    vscode.commands.executeCommand('ketchup.connect');
+    // Do NOT automatically connect, as this causes a loop if auth fails repeatedly
+    // vscode.commands.executeCommand('ketchup.connect');
   }
 
   // ===== Authentication =====
@@ -153,12 +183,20 @@ export class KetchupApiClient {
 
   async lookupRepository(remoteUrl: string): Promise<Repository | null> {
     try {
+      console.log('[API] Looking up repository:', remoteUrl);
+      const fullUrl = `${this.baseUrl}/v1/repos/lookup`;
+      console.log(`[Ketchup-API] Request: GET ${fullUrl}?url=${encodeURIComponent(remoteUrl)}`);
+      
       const response = await this.axios.get<Repository>('/v1/repos/lookup', {
-        params: { remoteUrl },
+        params: { url: remoteUrl },
       });
+      console.log('[API] Lookup successful:', response.status, response.data);
       return response.data;
     } catch (error) {
-      if ((error as ApiError).statusCode === 404) {
+      const apiError = error as ApiError;
+      console.log('[API] Lookup failed:', apiError.statusCode, apiError.message);
+      
+      if (apiError.statusCode === 404) {
         return null;
       }
       throw error;

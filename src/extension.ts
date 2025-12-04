@@ -6,6 +6,7 @@ import { SchedulesTreeProvider } from './views/SchedulesTreeProvider';
 import { DraftRecapPanel } from './webviews/DraftRecapPanel';
 import { RecapDetailPanel } from './webviews/RecapDetailPanel';
 import { extensionContext } from './context/ExtensionContext';
+import { KetchupStatusBar } from './ui/KetchupStatusBar';
 
 /**
  * Extension activation
@@ -15,6 +16,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Store context globally for API client access
   extensionContext.setContext(context);
+
+  // Initialize status bar
+  const statusBar = new KetchupStatusBar(context);
 
   // Initialize tree providers
   const recapsTreeProvider = new RecapsTreeProvider(context);
@@ -28,6 +32,9 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('ketchup.connect', async () => {
       await handleConnect(context);
+      statusBar.updateStatus(); // Refresh status after connection
+      recapsTreeProvider.refresh();
+      schedulesTreeProvider.refresh();
     })
   );
 
@@ -46,6 +53,19 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('ketchup.refreshRecaps', async () => {
       recapsTreeProvider.refresh();
+      statusBar.updateStatus();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.refreshSchedules', async () => {
+      schedulesTreeProvider.refresh();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.showStatus', async () => {
+      await showStatusPanel(context);
     })
   );
 
@@ -86,6 +106,9 @@ export async function activate(context: vscode.ExtensionContext) {
         if (uri.path === '/auth/callback') {
           console.log('[Ketchup] Handling auth callback');
           await handleAuthCallback(uri);
+        } else if (uri.path === '/install/callback') {
+          console.log('[Ketchup] Handling install callback');
+          await handleInstallCallback(uri);
         } else {
           console.log('[Ketchup] Unknown URI path:', uri.path);
           vscode.window.showWarningMessage(`Ketchup received unknown URI: ${uri.path}`);
@@ -135,26 +158,57 @@ async function handleConnect(context: vscode.ExtensionContext) {
   if (isAuth) {
     // Check if repo is connected
     const remoteUrl = await gitService.getRemoteUrl();
+    console.log('[Ketchup] Remote URL from GitService:', remoteUrl);
+    
     if (!remoteUrl) {
-      vscode.window.showErrorMessage('Could not detect remote URL');
+      vscode.window.showErrorMessage('Could not determine repository remote URL');
       return;
     }
 
+    console.log('[Ketchup] Looking up repository:', remoteUrl);
     const repo = await apiClient.lookupRepository(remoteUrl);
+    console.log('[Ketchup] Lookup result:', repo ? `Found: ${repo.id}` : 'Not found');
+    
     if (repo) {
       vscode.window.showInformationMessage(`Already connected to ${repo.name}`);
       return;
     }
 
-    // Repo not found, prompt to add
+    // Repo not found, start installation flow
+    console.log('[Ketchup] Repository not connected, starting installation flow');
+    
+    // Extract owner/repo from URL
+    const repoInfo = await gitService.getGitHubRepoInfo();
+    if (!repoInfo) {
+      vscode.window.showErrorMessage('Could not parse GitHub repository information');
+      return;
+    }
+
+    const repoFullName = `${repoInfo.owner}/${repoInfo.repo}`;
+    
     const selection = await vscode.window.showInformationMessage(
-      'This repository is not connected to Ketchup yet.',
-      'Connect in Browser'
+      `Connect ${repoFullName} to Ketchup?`,
+      'Install GitHub App',
+      'Cancel'
     );
 
-    if (selection === 'Connect in Browser') {
-      const url = apiClient.getWebUrl(`/repositories?url=${encodeURIComponent(remoteUrl)}`);
-      vscode.env.openExternal(vscode.Uri.parse(url));
+    if (selection === 'Install GitHub App') {
+      // Create a custom URI scheme for the callback
+      const callbackUri = `${vscode.env.uriScheme}://ketchup.ketchup-vscode/install/callback`;
+      
+      // Construct URL manually to ensure proper encoding of parameters
+      const baseUrlString = apiClient.getWebUrl('/vscode/install');
+      const installUrl = `${baseUrlString}?repo=${encodeURIComponent(repoFullName)}&redirect_uri=${encodeURIComponent(callbackUri)}`;
+      
+      console.log('[Ketchup] Opening installation flow:', installUrl);
+      console.log('[Ketchup] Repo:', repoFullName);
+      console.log('[Ketchup] Redirect URI:', callbackUri);
+      
+      vscode.env.openExternal(vscode.Uri.parse(installUrl));
+      
+      vscode.window.showInformationMessage(
+        'Opening GitHub App installation. You\'ll be redirected back here when complete.'
+      );
     }
 
     return;
@@ -277,6 +331,40 @@ async function handleAuthCode(code: string) {
 }
 
 /**
+ * Handle installation callback from GitHub App installation flow
+ */
+async function handleInstallCallback(uri: vscode.Uri): Promise<void> {
+  const params = new URLSearchParams(uri.query.replace(/\?/g, '&'));
+  const status = params.get('status');
+  const repo = params.get('repo');
+  const error = params.get('error');
+
+  console.log('[Ketchup] Install callback - status:', status, 'repo:', repo, 'error:', error);
+
+  if (error) {
+    vscode.window.showErrorMessage(`Installation failed: ${error}`);
+    return;
+  }
+
+  if (status === 'success') {
+    if (repo) {
+      vscode.window.showInformationMessage(
+        `✅ ${repo} is now connected to Ketchup! You can start creating recaps.`
+      );
+    } else {
+      vscode.window.showInformationMessage(
+        '✅ GitHub App installed successfully! Your repositories are now accessible.'
+      );
+    }
+    
+    // Refresh tree views to show the newly connected repository
+    vscode.commands.executeCommand('ketchup.refreshRecaps');
+  } else if (status === 'updated') {
+    vscode.window.showInformationMessage('GitHub App permissions updated successfully.');
+  }
+}
+
+/**
  * Handle draft recap creation
  */
 async function handleDraftRecap(context: vscode.ExtensionContext) {
@@ -329,6 +417,70 @@ async function handleDraftRecap(context: vscode.ExtensionContext) {
  */
 async function handleViewRecap(context: vscode.ExtensionContext, recap: any) {
   await RecapDetailPanel.render(context, recap.id);
+}
+
+/**
+ * Show detailed status panel
+ */
+async function showStatusPanel(context: vscode.ExtensionContext) {
+  const isAuth = await apiClient.isAuthenticated();
+  const gitService = createGitService();
+  
+  let statusMessage = '# Ketchup Status\n\n';
+  
+  // Authentication status
+  statusMessage += `## Authentication\n`;
+  statusMessage += isAuth ? '✅ Connected\n\n' : '❌ Not connected\n\n';
+  
+  if (!isAuth) {
+    const selection = await vscode.window.showInformationMessage(
+      'Not connected to Ketchup',
+      'Connect Now'
+    );
+    if (selection === 'Connect Now') {
+      await handleConnect(context);
+    }
+    return;
+  }
+  
+  // Repository status
+  statusMessage += `## Repository\n`;
+  
+  if (!gitService) {
+    statusMessage += '⚠️ No workspace open\n\n';
+  } else {
+    const isGitRepo = await gitService.isGitRepository();
+    if (!isGitRepo) {
+      statusMessage += '⚠️ Not a Git repository\n\n';
+    } else {
+      const remoteUrl = await gitService.getRemoteUrl();
+      const repoInfo = await gitService.getGitHubRepoInfo();
+      const branch = await gitService.getCurrentBranch();
+      
+      if (remoteUrl && repoInfo) {
+        statusMessage += `**Name:** ${repoInfo.owner}/${repoInfo.repo}\n`;
+        statusMessage += `**Branch:** ${branch}\n`;
+        statusMessage += `**Remote:** ${remoteUrl}\n\n`;
+        
+        const repo = await apiClient.lookupRepository(remoteUrl);
+        if (repo) {
+          statusMessage += `**Status:** ✅ Connected to Ketchup\n`;
+          statusMessage += `**Ketchup ID:** ${repo.id}\n`;
+        } else {
+          statusMessage += `**Status:** ⚠️ Not connected to Ketchup\n`;
+        }
+      } else {
+        statusMessage += '⚠️ No remote configured\n';
+      }
+    }
+  }
+  
+  // Show in a new document
+  const doc = await vscode.workspace.openTextDocument({
+    content: statusMessage,
+    language: 'markdown'
+  });
+  await vscode.window.showTextDocument(doc, { preview: true });
 }
 
 /**

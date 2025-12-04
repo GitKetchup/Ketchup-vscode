@@ -109,7 +109,8 @@
       "properties": {
         "ketchup.apiUrl": {
           "type": "string",
-          "default": "https://app.gitketchup.com",
+          "defaults": "https://app.gitketchup.com",
+          "default": "http://localhost:3003",
           "description": "Ketchup API base URL (for self-hosted instances)"
         },
         "ketchup.mode": {
