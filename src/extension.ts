@@ -158,7 +158,6 @@ async function handleConnect(context: vscode.ExtensionContext) {
   if (isAuth) {
     // Check if repo is connected
     const remoteUrl = await gitService.getRemoteUrl();
-    console.log('[Ketchup] Remote URL from GitService:', remoteUrl);
     
     if (!remoteUrl) {
       vscode.window.showErrorMessage('Could not determine repository remote URL');
@@ -415,8 +414,22 @@ async function handleDraftRecap(context: vscode.ExtensionContext) {
 /**
  * Handle viewing a recap
  */
-async function handleViewRecap(context: vscode.ExtensionContext, recap: any) {
-  await RecapDetailPanel.render(context, recap.id);
+async function handleViewRecap(context: vscode.ExtensionContext, item: any) {
+  let recapId: string | undefined;
+
+  if (item.recap && item.recap.id) {
+    // It's a RecapTreeItem
+    recapId = item.recap.id;
+  } else if (item.id) {
+    // It's a raw Recap object
+    recapId = item.id;
+  }
+
+  if (recapId) {
+    await RecapDetailPanel.render(context, recapId);
+  } else {
+    vscode.window.showErrorMessage('Could not open recap: Invalid ID');
+  }
 }
 
 /**

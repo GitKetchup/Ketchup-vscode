@@ -75,7 +75,8 @@ export class RecapDetailPanel {
       this.panel.title = recap.title;
       this.panel.webview.html = this.getHtmlContent(recap, assets);
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to load recap: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+      vscode.window.showErrorMessage(`Failed to load recap: ${errorMessage}`);
       this.panel.dispose();
     }
   }
@@ -99,7 +100,8 @@ export class RecapDetailPanel {
       // Reload recap data to show new asset
       await this.loadRecapData();
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to generate asset: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+      vscode.window.showErrorMessage(`Failed to generate asset: ${errorMessage}`);
     }
   }
 

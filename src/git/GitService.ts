@@ -34,7 +34,6 @@ export class GitService {
     try {
       const remotes = await this.git.getRemotes(true);
       const origin = remotes.find((r) => r.name === remoteName);
-      console.log(`[Ketchup-GitService] Found remotes: ${JSON.stringify(remotes.map(r => r.name))}, looking for: ${remoteName}`);
 
       if (!origin) {
         return null;

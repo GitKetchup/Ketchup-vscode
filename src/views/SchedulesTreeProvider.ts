@@ -88,7 +88,7 @@ export class SchedulesTreeProvider implements vscode.TreeDataProvider<ScheduleTr
         return [
           new ScheduleTreeItem(
             'Error loading schedules',
-            String(error),
+            error instanceof Error ? error.message : JSON.stringify(error),
             vscode.TreeItemCollapsibleState.None,
             'error'
           ),

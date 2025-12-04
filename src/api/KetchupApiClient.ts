@@ -146,7 +146,6 @@ export class KetchupApiClient {
   }
 
   private async handleLogout(): Promise<void> {
-    console.log('[API] Logging out due to session expiry or error');
     await extensionContext.getSecrets().delete('ketchup.accessToken');
     await extensionContext.getSecrets().delete('ketchup.refreshToken');
     vscode.window.showWarningMessage('Session expired. Please log in again.');
@@ -184,13 +183,10 @@ export class KetchupApiClient {
   async lookupRepository(remoteUrl: string): Promise<Repository | null> {
     try {
       console.log('[API] Looking up repository:', remoteUrl);
-      const fullUrl = `${this.baseUrl}/v1/repos/lookup`;
-      console.log(`[Ketchup-API] Request: GET ${fullUrl}?url=${encodeURIComponent(remoteUrl)}`);
-      
       const response = await this.axios.get<Repository>('/v1/repos/lookup', {
         params: { url: remoteUrl },
       });
-      console.log('[API] Lookup successful:', response.status, response.data);
+      console.log('[API] Lookup successful:', response.status);
       return response.data;
     } catch (error) {
       const apiError = error as ApiError;

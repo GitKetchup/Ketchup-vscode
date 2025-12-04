@@ -90,6 +90,11 @@
           "command": "ketchup.refreshRecaps",
           "when": "view == ketchup.recaps",
           "group": "navigation"
+        },
+        {
+          "command": "ketchup.logout",
+          "when": "view == ketchup.recaps",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
