@@ -228,21 +228,23 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js",
+    "test": "node ./dist/test/runTest.js",
     "package": "vsce package",
     "deploy": "vsce publish"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "@vscode/test-electron": "^2.3.8",
+    "@vscode/vsce": "^2.22.0",
     "eslint": "^8.56.0",
     "glob": "^10.3.10",
-    "typescript": "^5.3.3",
-    "@vscode/vsce": "^2.22.0"
+    "mocha": "^11.7.5",
+    "typescript": "^5.3.3"
   },
   "dependencies": {
     "axios": "^1.6.5",
