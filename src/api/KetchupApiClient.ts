@@ -8,7 +8,10 @@ import {
   Schedule,
   Commit,
   ApiError,
-  AuthTokenResponse
+  AuthTokenResponse,
+  IntelligenceSummary,
+  ForensicsData,
+  SkillsGraph
 } from '../types';
 import { extensionContext } from '../context/ExtensionContext';
 
@@ -384,6 +387,239 @@ export class KetchupApiClient {
 
   async triggerSchedule(scheduleId: string): Promise<void> {
     await this.axios.post(`/v1/schedules/${scheduleId}/trigger`);
+  }
+
+  // ===== Intelligence Platform =====
+
+  /**
+   * Get the full intelligence summary for a project
+   * Includes momentum, velocity pulse, health trend, and flow score
+   */
+  async getIntelligenceSummary(projectId: string): Promise<IntelligenceSummary> {
+    // Fetch momentum data from backend
+    const response = await this.axios.get<any>(`/projects/${projectId}/momentum?history=true`);
+    const data = response.data;
+    
+    // Transform backend response to match IntelligenceSummary interface
+    const momentum = data.momentum || data;
+    
+    return {
+      momentum: {
+        score: momentum.score ?? 1.0,
+        grade: momentum.grade ?? 'C',
+        interpretation: momentum.interpretation ?? 'Keeping pace',
+        velocity_growth: momentum.velocity_growth_percent ?? 0,
+        complexity_growth: momentum.complexity_growth_percent ?? 0,
+        period: momentum.period ?? {
+          start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          end: new Date().toISOString(),
+        },
+        highlights: this.extractMomentumHighlights(momentum),
+      },
+      velocity_pulse: {
+        contributors: [], // Would need separate API call
+        period_days: 7,
+        total_commits: momentum.current_period?.commits ?? 0,
+        top_contributor: undefined,
+      },
+      health_trend: {
+        delta: 0,
+        interpretation: 'Stable',
+        breakdown: {
+          security_fixes: 0,
+          security_new: 0,
+          dead_code_removed: 0,
+          quick_wins_resolved: 0,
+        },
+        sparkline: data.history?.map((h: any) => h.momentum_score * 100) ?? [],
+      },
+      flow_score: 75, // Default - would need process analysis
+      overall_grade: momentum.grade ?? 'C',
+      narration: momentum.interpretation,
+    };
+  }
+
+  /**
+   * Extract highlights from momentum data
+   */
+  private extractMomentumHighlights(momentum: any): Array<{
+    type: 'positive' | 'warning' | 'neutral';
+    icon: string;
+    title: string;
+    description: string;
+  }> {
+    const highlights = [];
+    
+    // Velocity highlight
+    if (momentum.velocity_growth_percent > 20) {
+      highlights.push({
+        type: 'positive' as const,
+        icon: '🚀',
+        title: 'Velocity Surge',
+        description: `Commit rate up ${Math.round(momentum.velocity_growth_percent)}% vs last period`,
+      });
+    } else if (momentum.velocity_growth_percent < -20) {
+      highlights.push({
+        type: 'warning' as const,
+        icon: '📉',
+        title: 'Velocity Drop',
+        description: `Commit rate down ${Math.abs(Math.round(momentum.velocity_growth_percent))}% vs last period`,
+      });
+    }
+    
+    // Complexity highlight
+    if (momentum.complexity_growth_percent < 0) {
+      highlights.push({
+        type: 'positive' as const,
+        icon: '✨',
+        title: 'Complexity Reduced',
+        description: `Code got ${Math.abs(Math.round(momentum.complexity_growth_percent))}% simpler`,
+      });
+    } else if (momentum.complexity_growth_percent > 15) {
+      highlights.push({
+        type: 'warning' as const,
+        icon: '⚠️',
+        title: 'Complexity Growing',
+        description: `Technical debt increasing at ${Math.round(momentum.complexity_growth_percent)}%`,
+      });
+    }
+    
+    // Momentum score highlight
+    if (momentum.score >= 1.5) {
+      highlights.push({
+        type: 'positive' as const,
+        icon: '🏆',
+        title: 'Ahead of the Curve',
+        description: 'Shipping faster than debt accumulates',
+      });
+    } else if (momentum.score < 0.7) {
+      highlights.push({
+        type: 'warning' as const,
+        icon: '🐌',
+        title: 'Falling Behind',
+        description: 'Complexity growing faster than velocity',
+      });
+    }
+    
+    return highlights;
+  }
+
+  /**
+   * Get forensics data for a project
+   * Includes complexity hotspots, security summary, dead code metrics, and quick wins
+   */
+  async getForensics(projectId: string): Promise<ForensicsData> {
+    const response = await this.axios.get<any>(`/projects/${projectId}/forensics`);
+    const data = response.data;
+    
+    // Transform backend response to match ForensicsData interface
+    return {
+      complexity_hotspots: (data.code_vitals?.items ?? []).slice(0, 10).map((cv: any) => ({
+        file: cv.file_path ?? cv.file ?? 'unknown',
+        function_name: cv.function_name,
+        complexity: cv.complexity_score ?? 0,
+        loc: cv.lines_of_code ?? 0,
+        language: cv.language ?? 'unknown',
+        risk: cv.complexity_score > 30 ? 'CRITICAL' : cv.complexity_score > 20 ? 'HIGH' : cv.complexity_score > 10 ? 'MEDIUM' : 'LOW',
+      })),
+      security_summary: {
+        total_vulnerabilities: data.security_alerts?.total ?? 0,
+        critical: data.security_alerts?.by_severity?.critical ?? 0,
+        high: data.security_alerts?.by_severity?.high ?? 0,
+        medium: data.security_alerts?.by_severity?.medium ?? 0,
+        low: data.security_alerts?.by_severity?.low ?? 0,
+        grade: this.getSecurityGrade(data.security_alerts?.by_severity),
+        last_scan: data.snapshot_date,
+      },
+      dead_code: {
+        estimated_lines: (data.dead_code?.items ?? []).reduce((acc: number, dc: any) => acc + (dc.lines ?? 0), 0),
+        unused_functions: data.dead_code?.by_type?.functions ?? 0,
+        unused_imports: data.dead_code?.by_type?.imports ?? 0,
+        unused_variables: data.dead_code?.by_type?.variables ?? 0,
+      },
+      quick_wins: (data.quick_wins?.items ?? []).slice(0, 10).map((qw: any) => ({
+        type: qw.category ?? 'complexity',
+        title: qw.title ?? qw.description ?? 'Quick win',
+        description: qw.suggested_action ?? qw.description ?? '',
+        file: qw.file_path,
+        impact: (qw.priority === 'critical' || qw.priority === 'high') ? 'HIGH' : qw.priority === 'medium' ? 'MEDIUM' : 'LOW',
+        effort: 'LOW',
+      })),
+      overall_health: this.getOverallHealth(data),
+    };
+  }
+
+  private getSecurityGrade(severity: any): string {
+    if (!severity) return 'A';
+    if (severity.critical > 0) return 'F';
+    if (severity.high > 2) return 'D';
+    if (severity.high > 0) return 'C';
+    if (severity.medium > 5) return 'B';
+    return 'A';
+  }
+
+  private getOverallHealth(data: any): string {
+    let score = 100;
+    
+    // Deduct for security issues
+    score -= (data.security_alerts?.by_severity?.critical ?? 0) * 20;
+    score -= (data.security_alerts?.by_severity?.high ?? 0) * 10;
+    score -= (data.security_alerts?.by_severity?.medium ?? 0) * 3;
+    
+    // Deduct for high complexity
+    score -= (data.code_vitals?.high_complexity_count ?? 0) * 5;
+    
+    // Deduct for dead code
+    score -= Math.min((data.dead_code?.total ?? 0), 10) * 2;
+    
+    if (score >= 90) return 'Excellent';
+    if (score >= 75) return 'Good';
+    if (score >= 50) return 'Fair';
+    if (score >= 25) return 'Poor';
+    return 'Critical';
+  }
+
+  /**
+   * Get the skills graph for a project
+   * Includes contributor profiles, language distribution, and bus factor
+   */
+  async getSkillsGraph(projectId: string): Promise<SkillsGraph> {
+    const response = await this.axios.get<any>(`/projects/${projectId}/skills`);
+    const data = response.data;
+    
+    // Transform backend response to match SkillsGraph interface
+    return {
+      contributors: (data.contributors ?? []).map((c: any) => ({
+        username: c.username ?? 'unknown',
+        email: c.email,
+        avatarUrl: c.avatar_url,
+        commits: c.commits_count ?? 0,
+        leverage_index: c.leverage_index ?? 0,
+        velocity_trend: c.velocity_trend ?? 0,
+        primary_language: c.primary_language ?? 'Unknown',
+        languages: c.skills_graph?.languages ?? {},
+        frameworks: Object.keys(c.skills_graph?.frameworks ?? {}),
+        modules: Object.keys(c.skills_graph?.modules ?? {}),
+        bus_factor_contribution: c.leverage_index ?? 0,
+        first_seen: c.first_seen_at,
+        last_active: c.last_active_at,
+      })),
+      team_size: data.team_size ?? 0,
+      bus_factor: data.bus_factor ?? 0,
+      language_distribution: data.language_distribution ?? {},
+      framework_distribution: {},
+      module_ownership: {},
+    };
+  }
+
+  /**
+   * Refresh intelligence data by triggering a new analysis
+   */
+  async refreshIntelligence(projectId: string): Promise<void> {
+    // Trigger deep-dive analysis
+    await this.axios.post(`/projects/${projectId}/analyze-range`, {
+      deep_dive: true,
+    });
   }
 
   // ===== Utility =====

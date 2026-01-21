@@ -1,8 +1,8 @@
 {
   "name": "ketchup-vscode",
   "displayName": "Ketchup",
-  "description": "Transform your git commits into cinematic story recaps directly from VS Code",
-  "version": "0.1.0",
+  "description": "Transform your git commits into cinematic story recaps and intelligence dashboards directly from VS Code",
+  "version": "0.2.0",
   "publisher": "ketchup",
   "icon": "media/icon.png",
   "engines": {
@@ -10,14 +10,16 @@
   },
   "categories": [
     "Other",
-    "SCM Providers"
+    "SCM Providers",
+    "Visualization"
   ],
   "keywords": [
     "git",
     "changelog",
     "recap",
-    "story",
-    "documentation"
+    "momentum",
+    "forensics",
+    "analytics"
   ],
   "activationEvents": [
     "onStartupFinished",
@@ -81,6 +83,26 @@
         "command": "ketchup.refreshSchedules",
         "title": "Refresh Schedules",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "ketchup.viewMomentum",
+        "title": "Ketchup: View Momentum Dashboard",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "ketchup.viewForensics",
+        "title": "Ketchup: View Forensics",
+        "icon": "$(search)"
+      },
+      {
+        "command": "ketchup.viewSkills",
+        "title": "Ketchup: View Skills Graph",
+        "icon": "$(organization)"
+      },
+      {
+        "command": "ketchup.refreshIntelligence",
+        "title": "Refresh Intelligence",
+        "icon": "$(refresh)"
       }
     ],
     "viewsContainers": {
@@ -101,6 +123,11 @@
         {
           "id": "ketchup.schedules",
           "name": "Schedules"
+        },
+        {
+          "id": "ketchup.intelligence",
+          "name": "Intelligence",
+          "visibility": "visible"
         }
       ]
     },

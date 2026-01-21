@@ -3,9 +3,13 @@ import { apiClient } from './api/KetchupApiClient';
 import { createGitService } from './git/GitService';
 import { RecapsTreeProvider } from './views/RecapsTreeProvider';
 import { SchedulesTreeProvider } from './views/SchedulesTreeProvider';
+import { IntelligenceTreeProvider } from './views/IntelligenceTreeProvider';
 import { DraftRecapPanel } from './webviews/DraftRecapPanel';
 import { RecapDetailPanel } from './webviews/RecapDetailPanel';
 import { SchedulePanel } from './webviews/SchedulePanel';
+import { MomentumPanel } from './webviews/MomentumPanel';
+import { ForensicsPanel } from './webviews/ForensicsPanel';
+import { SkillsPanel } from './webviews/SkillsPanel';
 import { extensionContext } from './context/ExtensionContext';
 import { KetchupStatusBar } from './ui/KetchupStatusBar';
 
@@ -24,10 +28,12 @@ export async function activate(context: vscode.ExtensionContext) {
   // Initialize tree providers
   const recapsTreeProvider = new RecapsTreeProvider(context);
   const schedulesTreeProvider = new SchedulesTreeProvider(context);
+  const intelligenceTreeProvider = new IntelligenceTreeProvider(context);
 
   // Register tree views
   vscode.window.registerTreeDataProvider('ketchup.recaps', recapsTreeProvider);
   vscode.window.registerTreeDataProvider('ketchup.schedules', schedulesTreeProvider);
+  vscode.window.registerTreeDataProvider('ketchup.intelligence', intelligenceTreeProvider);
 
   // Register commands
   context.subscriptions.push(
@@ -109,6 +115,33 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showInformationMessage('Logged out of Ketchup');
       recapsTreeProvider.refresh();
       schedulesTreeProvider.refresh();
+      intelligenceTreeProvider.refresh();
+    })
+  );
+
+  // ===== Intelligence Platform Commands =====
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.viewMomentum', async () => {
+      await handleViewMomentum(context);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.viewForensics', async () => {
+      await handleViewForensics(context);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.viewSkills', async () => {
+      await handleViewSkills(context);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.refreshIntelligence', async () => {
+      intelligenceTreeProvider.refresh();
     })
   );
 
@@ -119,6 +152,7 @@ export async function activate(context: vscode.ExtensionContext) {
     if (isAuth) {
       recapsTreeProvider.refresh();
       schedulesTreeProvider.refresh();
+      intelligenceTreeProvider.refresh();
     }
   }
 
@@ -388,6 +422,129 @@ async function handleInstallCallback(uri: vscode.Uri): Promise<void> {
   } else if (status === 'updated') {
     vscode.window.showInformationMessage('GitHub App permissions updated successfully.');
   }
+}
+
+/**
+ * Handle viewing the Momentum Dashboard
+ */
+async function handleViewMomentum(context: vscode.ExtensionContext) {
+  const gitService = createGitService();
+
+  if (!gitService) {
+    vscode.window.showErrorMessage('Please open a workspace to view momentum');
+    return;
+  }
+
+  const isAuth = await apiClient.isAuthenticated();
+  if (!isAuth) {
+    const selection = await vscode.window.showInformationMessage(
+      'Please connect to Ketchup first',
+      'Connect Now'
+    );
+    if (selection === 'Connect Now') {
+      vscode.commands.executeCommand('ketchup.connect');
+    }
+    return;
+  }
+
+  const remoteUrl = await gitService.getRemoteUrl();
+  if (!remoteUrl) {
+    vscode.window.showErrorMessage('Could not detect remote URL');
+    return;
+  }
+
+  const repo = await apiClient.lookupRepository(remoteUrl);
+  if (!repo) {
+    vscode.window.showWarningMessage(
+      'This repository is not connected to Ketchup yet.',
+      'Connect in Browser'
+    ).then(selection => {
+      if (selection === 'Connect in Browser') {
+        const url = apiClient.getWebUrl(`/repositories?url=${encodeURIComponent(remoteUrl)}`);
+        vscode.env.openExternal(vscode.Uri.parse(url));
+      }
+    });
+    return;
+  }
+
+  // Open Momentum Dashboard
+  await MomentumPanel.render(context, repo);
+}
+
+/**
+ * Handle viewing the Forensics panel
+ */
+async function handleViewForensics(context: vscode.ExtensionContext) {
+  const gitService = createGitService();
+
+  if (!gitService) {
+    vscode.window.showErrorMessage('Please open a workspace to view forensics');
+    return;
+  }
+
+  const isAuth = await apiClient.isAuthenticated();
+  if (!isAuth) {
+    const selection = await vscode.window.showInformationMessage(
+      'Please connect to Ketchup first',
+      'Connect Now'
+    );
+    if (selection === 'Connect Now') {
+      vscode.commands.executeCommand('ketchup.connect');
+    }
+    return;
+  }
+
+  const remoteUrl = await gitService.getRemoteUrl();
+  if (!remoteUrl) {
+    vscode.window.showErrorMessage('Could not detect remote URL');
+    return;
+  }
+
+  const repo = await apiClient.lookupRepository(remoteUrl);
+  if (!repo) {
+    vscode.window.showWarningMessage('This repository is not connected to Ketchup yet.');
+    return;
+  }
+
+  await ForensicsPanel.render(context, repo);
+}
+
+/**
+ * Handle viewing the Skills panel
+ */
+async function handleViewSkills(context: vscode.ExtensionContext) {
+  const gitService = createGitService();
+
+  if (!gitService) {
+    vscode.window.showErrorMessage('Please open a workspace to view skills');
+    return;
+  }
+
+  const isAuth = await apiClient.isAuthenticated();
+  if (!isAuth) {
+    const selection = await vscode.window.showInformationMessage(
+      'Please connect to Ketchup first',
+      'Connect Now'
+    );
+    if (selection === 'Connect Now') {
+      vscode.commands.executeCommand('ketchup.connect');
+    }
+    return;
+  }
+
+  const remoteUrl = await gitService.getRemoteUrl();
+  if (!remoteUrl) {
+    vscode.window.showErrorMessage('Could not detect remote URL');
+    return;
+  }
+
+  const repo = await apiClient.lookupRepository(remoteUrl);
+  if (!repo) {
+    vscode.window.showWarningMessage('This repository is not connected to Ketchup yet.');
+    return;
+  }
+
+  await SkillsPanel.render(context, repo);
 }
 
 /**
