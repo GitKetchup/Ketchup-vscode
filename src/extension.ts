@@ -10,6 +10,8 @@ import { SchedulePanel } from './webviews/SchedulePanel';
 import { MomentumPanel } from './webviews/MomentumPanel';
 import { ForensicsPanel } from './webviews/ForensicsPanel';
 import { SkillsPanel } from './webviews/SkillsPanel';
+import { LocalSetupPanel } from './webviews/LocalSetupPanel';
+import { LocalEngineClient } from './api/LocalEngineClient';
 import { extensionContext } from './context/ExtensionContext';
 import { KetchupStatusBar } from './ui/KetchupStatusBar';
 
@@ -144,6 +146,21 @@ export async function activate(context: vscode.ExtensionContext) {
       intelligenceTreeProvider.refresh();
     })
   );
+
+  // ===== Local Mode Commands =====
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.setupLocal', async () => {
+      await LocalSetupPanel.render(context);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ketchup.checkLocalHealth', async () => {
+      await handleCheckLocalHealth(context);
+    })
+  );
+
 
   // Auto-refresh on startup if enabled
   const config = vscode.workspace.getConfiguration('ketchup');
@@ -764,6 +781,64 @@ async function handleToggleSchedule(item: any) {
   } catch (error: any) {
     vscode.window.showErrorMessage(`Failed to toggle schedule: ${error.message}`);
   }
+}
+
+// Handle checking local engine health
+async function handleCheckLocalHealth(context: vscode.ExtensionContext): Promise<void> {
+  const localClient = LocalEngineClient.getInstance(context);
+
+  await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: 'Checking local engine status...',
+      cancellable: false,
+    },
+    async () => {
+      const ollamaAvailable = await localClient.isOllamaAvailable();
+      const lmStudioAvailable = await localClient.isLMStudioAvailable();
+      const binaryInstalled = await localClient.isBinaryInstalled();
+
+      const lines: string[] = [];
+
+      // Binary status
+      if (binaryInstalled) {
+        const version = await localClient.getInstalledVersion();
+        lines.push(`✅ Ketchup Engine: v${version}`);
+      } else {
+        lines.push('❌ Ketchup Engine: Not installed');
+      }
+
+      // LLM provider status
+      if (ollamaAvailable) {
+        lines.push('✅ Ollama: Running (localhost:11434)');
+      } else {
+        lines.push('❌ Ollama: Not detected');
+      }
+
+      if (lmStudioAvailable) {
+        lines.push('✅ LM Studio: Running (localhost:1234)');
+      } else {
+        lines.push('❌ LM Studio: Not detected');
+      }
+
+      // Current mode
+      const mode = apiClient.mode;
+      lines.push(`ℹ️ Current Mode: ${mode}`);
+
+      // Show status
+      const message = lines.join('\n');
+
+      const action = await vscode.window.showInformationMessage(
+        `Local Engine Status\n\n${message}`,
+        'Setup Local Mode',
+        'Close'
+      );
+
+      if (action === 'Setup Local Mode') {
+        await LocalSetupPanel.render(context);
+      }
+    }
+  );
 }
 
 /**

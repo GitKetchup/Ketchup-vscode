@@ -103,6 +103,16 @@
         "command": "ketchup.refreshIntelligence",
         "title": "Refresh Intelligence",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "ketchup.setupLocal",
+        "title": "Ketchup: Setup Local Mode",
+        "icon": "$(desktop-download)"
+      },
+      {
+        "command": "ketchup.checkLocalHealth",
+        "title": "Ketchup: Check Local Engine Status",
+        "icon": "$(server)"
       }
     ],
     "viewsContainers": {

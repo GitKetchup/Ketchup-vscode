@@ -14,16 +14,29 @@ import {
   SkillsGraph
 } from '../types';
 import { extensionContext } from '../context/ExtensionContext';
+import { LocalEngineClient } from './LocalEngineClient';
+
+/**
+ * Operation mode for the Ketchup extension
+ * - cloud: All processing on Ketchup servers (default)
+ * - local: 100% on-device, requires Ollama/LM Studio
+ * - mixed: Analytics local, cloud for assets
+ */
+export type OperationMode = 'cloud' | 'local' | 'mixed';
 
 /**
  * Ketchup API Client
  * Handles all communication with the Ketchup cloud backend
+ * Supports local, cloud, and mixed operation modes
  */
 export class KetchupApiClient {
   private axios: AxiosInstance;
   private baseUrl: string;
+  private _mode: OperationMode;
+  private _localClient: LocalEngineClient | null = null;
 
   constructor() {
+    this._mode = this.getOperationMode();
     this.baseUrl = this.getApiUrl();
     this.axios = axios.create({
       baseURL: this.baseUrl,
@@ -62,6 +75,56 @@ export class KetchupApiClient {
       }
     );
   }
+
+  /**
+   * Get the current operation mode
+   */
+  get mode(): OperationMode {
+    return this._mode;
+  }
+
+  /**
+   * Check if we should use local processing for the given operation
+   */
+  shouldUseLocal(operation: 'analytics' | 'recap' | 'assets'): boolean {
+    if (this._mode === 'cloud') {
+      return false;
+    }
+    if (this._mode === 'local') {
+      return true;
+    }
+    // Mixed mode: local for analytics and recap, cloud for assets
+    return operation !== 'assets';
+  }
+
+  /**
+   * Get the local engine client (creates if needed)
+   */
+  getLocalClient(): LocalEngineClient | null {
+    if (this._mode === 'cloud') {
+      return null;
+    }
+    if (!this._localClient) {
+      const context = extensionContext.getContext();
+      if (context) {
+        this._localClient = LocalEngineClient.getInstance(context);
+      }
+    }
+    return this._localClient;
+  }
+
+  /**
+   * Get operation mode from VS Code settings
+   */
+  private getOperationMode(): OperationMode {
+    const config = vscode.workspace.getConfiguration('ketchup');
+    const mode = config.get<string>('mode', 'cloud');
+    if (mode === 'local' || mode === 'mixed') {
+      return mode;
+    }
+    return 'cloud';
+  }
+
 
   private getApiUrl(): string {
     const config = vscode.workspace.getConfiguration('ketchup');
