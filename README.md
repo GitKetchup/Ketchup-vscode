@@ -189,7 +189,20 @@ See our [Privacy Policy](https://gitketchup.com/privacy) for full details.
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions!
+
+**Quick Start:**
+```bash
+git clone https://github.com/ketchup-dev/ketchup.git
+cd ketchup/ketchup-vscode
+npm install
+# Press F5 to launch Extension Development Host
+```
+
+**Resources:**
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Detailed contribution guidelines
+- [DEVELOPMENT.md](../ketchup-webapp/DEVELOPMENT.md#3️⃣-vscode-extension-development) - Complete development guide
+- [VSCode Extension API](https://code.visualstudio.com/api) - Official VS Code docs
 
 ## License
 
