@@ -140,5 +140,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
   <br>
   <a href="https://gitketchup.com">Website</a> • 
   <a href="https://twitter.com/gitketchup">Twitter</a> • 
-  <a href="https://discord.gitketchup.com">Discord</a>
+  <a href="https://gitketchup.com/discord">Discord</a>
 </div>
