@@ -1,76 +1,75 @@
-# Ketchup for VS Code
+<div align="center">
+  <img src="https://gitketchup.com/images/hero.png" width="100%" alt="Ketchup for VS Code" />
 
-Transform your git commits into cinematic story recaps directly from VS Code. Connect your repository, select commits, and let Ketchup's AI craft narrative updates complete with video recaps, changelogs, and social media posts.
+  # 🍅 Ketchup for VS Code
 
-![Ketchup](https://gitketchup.com/images/hero.png)
+  **Catch up on your code.**
+  <br>
+  *Turn your git commits into cinematic story recaps without leaving your editor.*
 
-## Features
+  [![Marketplace](https://img.shields.io/visual-studio-marketplace/v/ketchup.ketchup-vscode?style=for-the-badge&logo=visual-studio-code&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=ketchup.ketchup-vscode)
+  [![Installs](https://img.shields.io/visual-studio-marketplace/i/ketchup.ketchup-vscode?style=for-the-badge&logo=visual-studio-code&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=ketchup.ketchup-vscode)
+  [![License](https://img.shields.io/github/license/GitKetchup/ketchup-vscode?style=for-the-badge&color=blue)](LICENSE)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+
+  <p align="center">
+    <b>Ketchup</b> is the AI-native narrative engine for engineering teams. <br />
+    Connect your repository, select commits, and let AI craft narrative updates complete with video recaps, changelogs, and social media posts.
+  </p>
+</div>
+
+---
+
+## ✨ Features
 
 ### 🎬 Draft Recaps from Your Editor
-- Select time ranges (last 7, 14, or 30 days)
-- Filter by contributors
-- Cherry-pick specific commits
-- Preview activity snapshots before generating
+No more context switching. Draft your updates right where you code.
+- **Select Time Ranges**: Quickly grab the last 7, 14, or 30 days of work.
+- **Filter Contributors**: Focus on your work or see the team's velocity.
+- **Cherry-pick Commits**: Select specific changes to include in your story.
 
 ### 📖 View Story Points
-- AI-generated narrative summaries of your changes
-- Automatic risk assessment (Low/Medium/High)
-- Categorized by type (Feature, Fix, Refactor, etc.)
-- Full commit history included
+Turn raw commits into a compelling narrative.
+- **AI-Generated Summaries**: Understand the "why" behind the code.
+- **Risk Assessment**: Automatic Low/Medium/High grading.
+- **Smart Categorization**: Features, Fixes, Refactors, and Chore detection.
 
 ### 🎨 Generate Assets
-Create multiple content types from a single recap:
-- **Audio Recaps** - AI-narrated summaries
-- **Video Recaps** - Cinematic visualizations with Veo
-- **Changelogs** - Markdown-formatted release notes
-- **Social Posts** - Ready-to-share X and LinkedIn updates
-- **Visual Assets** - Custom graphics and banners
-
-### ⏰ Manage Schedules
-- View your automated recap schedules
-- Trigger manual runs
-- Quick access to edit in the web app
+One click, multiple formats.
+- **Audio Recaps**: AI-narrated summaries for on-the-go updates.
+- **Video Recaps**: Cinematic visualizations powered by Remotion & Veo.
+- **Changelogs**: instant Markdown release notes.
+- **Social Posts**: Ready-to-share updates for X and LinkedIn.
 
 ### 🔐 Privacy First
-- **Cloud Mode (Default)**: Sends commit metadata and SHAs to Ketchup cloud
-- **Local Mode (Coming Soon)**: Keep everything on your machine
-- Never uploads your entire repository
-- Respects .gitignore patterns
+Designed for security-conscious teams.
+- **Cloud Mode (Default)**: Sends *only* metadata and commit SHAs. **Code stays local.**
+- **Safe by Default**: Respects `.gitignore` and never touches secrets.
+- **Enterprise Ready**: SOC-2 compliant architecture (upcoming).
 
-## Getting Started
+---
 
-### 1. Install the Extension
-Search for "Ketchup" in the VS Code marketplace or install from [here](https://marketplace.visualstudio.com/items?itemName=ketchup.ketchup-vscode).
+## 🚀 Getting Started
 
-### 2. Connect Your Repository
-1. Open a git repository in VS Code
-2. Click the Ketchup icon in the Activity Bar
-3. Click "Connect to Ketchup" or run `Ketchup: Connect Workspace`
-4. Authenticate with your Ketchup account
-5. Add your repository to Ketchup (if not already connected)
+### 1. Install
+Search for **"Ketchup"** in the VS Code marketplace or install directly:
+`ext install ketchup.ketchup-vscode`
 
-### 3. Create Your First Recap
-1. Click the `+` icon in the Recaps view or run `Ketchup: Draft Recap`
-2. Select a time range
-3. Review and select commits
-4. Click "Generate Recap"
-5. Wait for AI processing (usually 30-60 seconds)
-6. View your story recap!
+### 2. Connect
+1. Click the **Ketchup icon** in the Activity Bar.
+2. Hit **"Connect to Ketchup"**.
+3. Authenticate securely with GitHub.
 
-## Commands
+### 3. Create
+1. Click the `+` icon in the Recaps view.
+2. Select your timeframe.
+3. Watch as Ketchup turns your git history into a story.
 
-Access these via the Command Palette (`Cmd/Ctrl + Shift + P`):
+---
 
-- `Ketchup: Connect Workspace` - Authenticate and connect your repository
-- `Ketchup: Draft Recap` - Start creating a new recap
-- `Ketchup: View Recap` - Open a recap in detail view
-- `Ketchup: Refresh Recaps` - Reload the recaps list
-- `Ketchup: Open in Browser` - View recap on Ketchup web app
-- `Ketchup: Logout` - Sign out of your Ketchup account
+## ⚙️ Configuration
 
-## Configuration
-
-Customize Ketchup in your VS Code settings:
+Customize your experience in `settings.json`:
 
 ```jsonc
 {
@@ -81,135 +80,65 @@ Customize Ketchup in your VS Code settings:
   "ketchup.mode": "cloud", // "cloud" | "local" | "mixed"
 
   // Default time range for drafts (in days)
-  "ketchup.defaultTimeRange": 7, // 7 | 14 | 30
+  "ketchup.defaultTimeRange": 7,
 
   // Auto-refresh recaps on startup
   "ketchup.autoRefresh": true
 }
 ```
 
-## How It Works
+---
 
-### Architecture
+## 🛠️ Commands
 
+| Command | Description |
+|---------|-------------|
+| `Ketchup: Connect Workspace` | Authenticate and connect your repo |
+| `Ketchup: Draft Recap` | Start creating a new recap |
+| `Ketchup: View Recap` | Open a recap in detail view |
+| `Ketchup: Open in Browser` | View recap on Ketchup web app |
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+graph LR
+    A[VS Code Extension] -->|Metadata Only| B(Ketchup Cloud)
+    B -->|AI Analysis| C{Story Generator}
+    C -->|Render| D[Video/Audio Assets]
+    C -->|Format| E[Changelog/Posts]
+    D -->|Stream| A
+    E -->|Sync| A
+    
+    style A fill:#007ACC,stroke:#fff,stroke-width:2px,color:#fff
+    style B fill:#EB3529,stroke:#fff,stroke-width:2px,color:#fff
+    style C fill:#FFD700,stroke:#333,stroke-width:2px,color:#000
 ```
-┌─────────────────┐
-│   VS Code       │
-│   Extension     │
-└────────┬────────┘
-         │
-         │ REST API
-         │
-┌────────▼────────┐
-│  Ketchup Cloud  │
-│  ┌───────────┐  │
-│  │ Story     │  │
-│  │ Generator │  │
-│  └───────────┘  │
-│  ┌───────────┐  │
-│  │ Asset     │  │
-│  │ Pipeline  │  │
-│  └───────────┘  │
-└─────────────────┘
-```
 
-1. **Local Git Detection**: Extension reads your repository metadata and commit history
-2. **Cloud Sync**: Sends commit SHAs and metadata to Ketchup (not your full code)
-3. **AI Processing**: GPT-4 analyzes commits and generates narrative story points
-4. **Asset Generation**: Creates videos (Veo), audio (ElevenLabs), and text content
-5. **Real-time Updates**: Extension polls for completion and displays results
+---
 
-### What Data is Sent?
+## 🤝 Contributing
 
-**Cloud Mode (Default)**:
-- Repository remote URL
-- Commit SHAs (hashes)
-- Commit messages
-- Author names and emails
-- Commit dates and metadata
-- Optionally: diffs (if you enable it)
-
-**What is NOT sent**:
-- Your full repository code
-- Files in .gitignore
-- Secrets or credentials
-- Uncommitted changes
-
-## Requirements
-
-- VS Code 1.85.0 or higher
-- Active git repository
-- Ketchup account (free tier available)
-- Internet connection (for cloud mode)
-
-## Extension Settings
-
-This extension contributes the following settings:
-
-* `ketchup.apiUrl`: Set custom API endpoint
-* `ketchup.mode`: Choose operation mode (cloud/local/mixed)
-* `ketchup.defaultTimeRange`: Default days for recap drafts
-* `ketchup.autoRefresh`: Auto-refresh recaps on startup
-
-## Known Issues
-
-- OAuth callback may require manual browser navigation on some systems
-- Large commit histories (>500 commits) may take longer to load
-- Asset generation times vary based on queue load
-
-## Roadmap
-
-- [ ] Local-only mode with on-premise LLM support
-- [ ] Inline commit annotations with AI summaries
-- [ ] Quick recap command for current branch
-- [ ] Diff viewer with story context
-- [ ] Multi-repository workspace support
-- [ ] Custom story templates
-- [ ] Team collaboration features
-
-## Support
-
-- **Documentation**: [docs.gitketchup.com](https://docs.gitketchup.com)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/ketchup-vscode/issues)
-- **Discord**: [Join our community](https://discord.gg/ketchup)
-- **Email**: support@gitketchup.com
-
-## Privacy & Security
-
-Ketchup takes your privacy seriously:
-
-- 🔒 OAuth 2.0 authentication
-- 🛡️ Encrypted data transmission (HTTPS/TLS)
-- 🔐 Secrets stored in VS Code's SecretStorage
-- 🚫 No code indexing or permanent storage
-- 📜 GDPR compliant
-- 🗑️ Right to deletion
-
-See our [Privacy Policy](https://gitketchup.com/privacy) for full details.
-
-## Contributing
-
-We welcome contributions!
+We welcome contributions! This project is open source.
 
 **Quick Start:**
 ```bash
-git clone https://github.com/ketchup-dev/ketchup.git
-cd ketchup/ketchup-vscode
+git clone https://github.com/GitKetchup/ketchup-vscode.git
+cd ketchup-vscode
 npm install
 # Press F5 to launch Extension Development Host
 ```
 
-**Resources:**
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Detailed contribution guidelines
-- [DEVELOPMENT.md](../ketchup-webapp/DEVELOPMENT.md#3️⃣-vscode-extension-development) - Complete development guide
-- [VSCode Extension API](https://code.visualstudio.com/api) - Official VS Code docs
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ---
 
-**Made with ❤️ by the Ketchup team**
-
-[Website](https://gitketchup.com) • [Twitter](https://twitter.com/ketchupdev) • [Discord](https://discord.gg/ketchup)
+<div align="center">
+  <br>
+  <b>Made with ❤️ by the Ketchup Team</b>
+  <br>
+  <a href="https://gitketchup.com">Website</a> • 
+  <a href="https://twitter.com/gitketchup">Twitter</a> • 
+  <a href="https://discord.gitketchup.com">Discord</a>
+</div>
