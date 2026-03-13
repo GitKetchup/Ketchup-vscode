@@ -4,6 +4,7 @@
   "description": "Transform your git commits into cinematic story recaps and intelligence dashboards directly from VS Code",
   "version": "0.2.0",
   "publisher": "ketchup",
+  "license": "Apache-2.0",
   "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.85.0"
@@ -128,16 +129,19 @@
       "ketchup": [
         {
           "id": "ketchup.recaps",
-          "name": "Recaps"
+          "name": "Recaps",
+          "icon": "$(history)"
         },
         {
           "id": "ketchup.schedules",
-          "name": "Schedules"
+          "name": "Schedules",
+          "icon": "$(calendar)"
         },
         {
           "id": "ketchup.intelligence",
           "name": "Intelligence",
-          "visibility": "visible"
+          "visibility": "visible",
+          "icon": "$(pulse)"
         }
       ]
     },
