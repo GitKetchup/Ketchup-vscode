@@ -1,5 +1,9 @@
 <div align="center">
-  <img src="https://gitketchup.com/images/hero.png" width="100%" alt="Ketchup for VS Code" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg">
+    <img alt="Ketchup Logo" src="assets/logo-light.svg" width="400">
+  </picture>
 
   # 🍅 Ketchup for VS Code
 
